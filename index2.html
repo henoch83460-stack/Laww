@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚔️ LAWW — Suivi T5/T6 · Fate War IGG</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<!-- ════════════════════════════════════════════════════════════════
+     ÉTAPE 1 : Remplacez les valeurs ci-dessous par votre config Firebase
+     (voir instructions en bas de page)
+     ════════════════════════════════════════════════════════════════ -->
+<script>
+const FIREBASE_CONFIG = {
+  apiKey:            "VOTRE_API_KEY",
+  authDomain:        "VOTRE_PROJECT.firebaseapp.com",
+  projectId:         "VOTRE_PROJECT_ID",
+  storageBucket:     "VOTRE_PROJECT.appspot.com",
+  messagingSenderId: "VOTRE_SENDER_ID",
+  appId:             "VOTRE_APP_ID"
+};
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07130f;--surface:#0d1f18;--card:#0f2018;--border:#1e4a32;
+  --gold:#f0b429;--green:#3ecf8e;--purple:#b87af0;--red:#e05c5c;
+  --text:#d4e8dc;--muted:#6b9980;--dim:#2a4a36;
+}
+body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+  background-image:radial-gradient(ellipse 80% 40% at 50% 0%,#0f3d25 0%,transparent 60%),
+    radial-gradient(ellipse 40% 60% at 90% 80%,#0a2e1e 0%,transparent 50%);}
+input,button,select{font-family:'Exo 2',sans-serif;}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.cinzel{font-family:'Cinzel',serif}
+
+/* SETUP OVERLAY */
+#setup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:9999;
+  display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px)}
+.setup-box{background:#0d2018;border:1px solid var(--gold);border-radius:16px;
+  max-width:640px;width:100%;padding:28px;box-shadow:0 0 60px rgba(240,180,41,.15)}
+.setup-title{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--gold);
+  letter-spacing:3px;margin-bottom:6px}
+.setup-sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+.setup-step{background:#081510;border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;margin-bottom:10px}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--gold);color:#07130f;font-weight:900;font-size:11px;margin-right:8px;flex-shrink:0}
+.step-text{font-size:12px;color:var(--text);line-height:1.6}
+.step-text a{color:var(--green);text-decoration:none}
+.step-text a:hover{text-decoration:underline}
+.step-text code{background:#0a2018;border:1px solid var(--border);border-radius:4px;
+  padding:1px 6px;font-family:monospace;font-size:11px;color:var(--gold)}
+.setup-btn{display:block;width:100%;padding:12px;border-radius:8px;border:none;margin-top:16px;
+  background:linear-gradient(135deg,#1a6040,#0d3d28);color:var(--green);cursor:pointer;
+  font-weight:700;font-size:14px;letter-spacing:1px;box-shadow:0 0 20px rgba(62,207,142,.2)}
+.setup-btn:hover{opacity:.85}
+.rules-box{background:#060e0a;border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;margin-top:8px;font-family:monospace;font-size:11px;color:var(--gold);
+  white-space:pre;overflow-x:auto}
+
+/* STATUS BAR */
+#status-bar{display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:6px 16px;font-size:11px;border-bottom:1px solid var(--border);
+  background:#060e0a;letter-spacing:.5px}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.connected{background:var(--green);box-shadow:0 0 6px rgba(62,207,142,.6)}
+.status-dot.connecting{background:var(--gold);animation:pulse 1s infinite}
+.status-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Layout */
+header{text-align:center;padding:22px 20px 12px;border-bottom:1px solid var(--border);position:relative}
+header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:200px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.tribe-title{font-family:'Cinzel',serif;font-size:clamp(20px,5vw,34px);font-weight:900;
+  color:var(--gold);letter-spacing:4px;text-shadow:0 0 30px rgba(240,180,41,.4)}
+.tribe-sub{color:var(--muted);font-size:12px;margin-top:4px;letter-spacing:3px;text-transform:uppercase}
+.chief-badge{display:inline-block;background:linear-gradient(135deg,#1a3d28,#0d2018);
+  border:1px solid var(--gold);border-radius:7px;padding:4px 16px;margin-top:8px;font-size:11px;color:var(--gold);letter-spacing:1px}
+.container{max-width:1200px;margin:0 auto;padding:14px}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+.stat-card{background:#0d1f18;border:1px solid var(--border);border-radius:9px;padding:10px 14px}
+.stat-label{font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.stat-value{font-family:'Cinzel',serif;font-size:18px;font-weight:700}
+.bar-group{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.bar-card{background:#0d1f18;border:1px solid var(--border);border-radius:9px;padding:10px 14px}
+.bar-label-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px}
+.bar-track{width:100%;height:8px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:8px;transition:width .4s ease}
+
+/* Controls */
+.controls{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+.search-input{flex:1;min-width:160px;background:#0d1f18;border:1px solid var(--border);
+  color:var(--text);padding:7px 12px;border-radius:7px;font-size:12px;outline:none}
+.search-input:focus{border-color:var(--green)}
+.view-btn{padding:6px 12px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--dim);cursor:pointer;font-size:12px;transition:all .2s}
+.view-btn.active{border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.08);color:var(--green)}
+.sort-filters{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+.sort-label{font-size:10px;color:var(--dim);letter-spacing:1px;align-self:center}
+.tab-btn{padding:4px 10px;border-radius:5px;cursor:pointer;font-weight:700;font-size:11px;
+  border:1px solid var(--border);background:transparent;color:var(--dim);transition:all .2s}
+.tab-btn.active-sort{border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.08);color:var(--green)}
+.tab-btn.active-filter{border-color:rgba(184,122,240,.4);background:rgba(184,122,240,.08);color:var(--purple)}
+.count-label{font-size:11px;color:var(--dim);margin-bottom:10px}
+.sync-badge{font-size:10px;padding:3px 10px;border-radius:12px;font-weight:700}
+.sync-saving{background:rgba(240,180,41,.12);color:var(--gold);border:1px solid rgba(240,180,41,.3)}
+.sync-saved{background:rgba(62,207,142,.12);color:var(--green);border:1px solid rgba(62,207,142,.3)}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:32px}
+.member-card{background:linear-gradient(135deg,#0d2018,#0a1a12);border:1px solid #1a3e28;
+  border-radius:10px;padding:14px;cursor:pointer;position:relative;overflow:hidden;transition:all .2s}
+.member-card:hover{border-color:#2a6040;transform:translateY(-2px)}
+.member-card.is-me{border-color:rgba(240,180,41,.4)}
+.card-topbar{position:absolute;top:0;left:0;right:0;height:2px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.card-name{font-size:13px;font-weight:700;letter-spacing:.5px;margin-bottom:3px}
+.card-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.rank-badge{display:inline-block;padding:1px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:1px}
+.card-power{font-size:10px;color:var(--green)}
+.updated-tag{font-size:9px;color:var(--dim);margin-top:2px}
+.card-rings{display:flex;gap:6px}
+.ring-wrap{text-align:center}
+.ring-label{font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:1px}
+.card-bars .bar-track{height:4px;margin-bottom:3px}
+.card-rem{font-size:10px;color:rgba(62,207,142,.5);margin-bottom:8px;margin-top:4px}
+.pips{display:flex;gap:4px;align-items:center}
+.pips-label{font-size:9px;color:var(--dim);letter-spacing:.5px}
+.pip{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.pip.on-green{background:var(--green);border-color:rgba(62,207,142,.6);box-shadow:0 0 5px rgba(62,207,142,.5)}
+.pip.on-purple{background:var(--purple);border-color:rgba(184,122,240,.6);box-shadow:0 0 5px rgba(184,122,240,.5)}
+
+/* TABLE */
+.table-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:32px}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{background:#0a1a12}
+th{padding:10px 12px;text-align:left;font-family:'Cinzel',serif;font-size:10px;color:var(--gold);
+  letter-spacing:1px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #0f2018;cursor:pointer;transition:background .15s}
+tr:hover td{background:#0f2018}
+tr:last-child td{border-bottom:none}
+.td-bar{display:flex;align-items:center;gap:8px;min-width:110px}
+.td-bar .bar-track{flex:1;height:5px}
+.td-pct{font-size:11px;font-weight:700;min-width:30px}
+.td-rem{font-size:10px;color:rgba(62,207,142,.5);white-space:nowrap}
+.td-up{font-size:9px;color:var(--dim);white-space:nowrap}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:1000;
+  display:flex;align-items:center;justify-content:center;padding:12px;backdrop-filter:blur(4px)}
+.modal{background:#07130f;border:1px solid var(--border);border-radius:14px;width:100%;max-width:600px;
+  max-height:93vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 60px rgba(62,207,142,.1)}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);background:#0a1a12;
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.modal-avatar{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-weight:900;font-size:12px;flex-shrink:0}
+.modal-prog-t5{font-size:11px;font-weight:700;color:var(--green)}
+.modal-prog-t6{font-size:11px;font-weight:700;color:var(--purple)}
+.modal-close{background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;padding:4px}
+.modal-costs{display:flex;background:#060e0a}
+.modal-cost-cell{flex:1;padding:8px 18px}
+.modal-cost-cell+.modal-cost-cell{border-left:1px solid var(--border)}
+.modal-cost-label{font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
+.modal-cost-vals{display:flex;gap:10px;font-size:12px;font-weight:700}
+.modal-tabs{display:flex;border-bottom:1px solid var(--border);background:#060e0a}
+.modal-tab{padding:8px 18px;border:none;border-bottom:2px solid transparent;background:transparent;
+  cursor:pointer;font-weight:700;font-size:12px;letter-spacing:1px;color:var(--dim);transition:all .2s}
+.modal-tab.active-t5{border-bottom-color:var(--green);color:var(--green)}
+.modal-tab.active-t6{border-bottom-color:var(--purple);color:var(--purple)}
+.modal-body{flex:1;overflow:auto;padding:4px 18px 18px}
+.modal-footer{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:#060e0a}
+.btn-cancel{padding:7px 18px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-weight:700;font-size:12px}
+.btn-save{padding:7px 24px;border-radius:7px;border:none;background:linear-gradient(135deg,#1a6040,#0d3d28);
+  color:var(--green);cursor:pointer;font-weight:700;font-size:12px;box-shadow:0 0 16px rgba(62,207,142,.15)}
+.btn-save:disabled{opacity:.4;cursor:not-allowed}
+
+/* FORM */
+.section{margin-top:14px}
+.section-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:5px}
+.prereq-box{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-top:4px;cursor:pointer;
+  border-radius:7px;border:1px solid var(--border);background:#0d1f18;transition:all .2s}
+.prereq-box.checked{background:rgba(62,207,142,.06);border-color:rgba(62,207,142,.3)}
+.prereq-check{width:15px;height:15px;border-radius:3px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.prereq-check.checked{background:var(--green);border-color:var(--green)}
+.form-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(30,74,50,.3)}
+.form-label{flex:1;font-size:11px;color:var(--muted)}
+.form-note{font-size:9px;color:var(--dim);margin-left:4px}
+.form-controls{display:flex;align-items:center;gap:4px}
+.form-mini-bar{width:44px;height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+.form-mini-fill{height:100%;border-radius:2px;transition:width .2s}
+.f-btn{width:20px;height:20px;border-radius:3px;border:1px solid var(--border);background:#0d1f18;
+  color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.f-val{width:38px;text-align:center;font-size:11px;font-weight:700;color:var(--text)}
+.f-val.done{color:var(--green)}
+.f-max{padding:2px 5px;border-radius:3px;border:1px solid var(--border);background:#0d1f18;color:var(--dim);cursor:pointer;font-size:9px}
+.toggle-row{display:flex;align-items:center;gap:8px;padding:5px 0}
+.toggle-label{flex:1;font-size:11px;color:var(--muted)}
+.tog{padding:3px 11px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;
+  border:1px solid var(--border);background:transparent;color:var(--dim);transition:all .2s}
+.tog.on{border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.1);color:var(--green)}
+.tog.off{border-color:rgba(107,153,128,.3);background:rgba(107,153,128,.08);color:var(--muted)}
+.modal-note{padding:8px 0 4px;font-size:10px;color:var(--dim);font-style:italic}
+
+/* Legend */
+.legend{padding:12px 14px;background:#0a1a12;border:1px solid #1a3a26;border-radius:9px;margin-bottom:20px}
+.legend-title{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:4px}
+.legend-text{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:var(--dim)}
+.legend-foot{margin-top:4px;font-size:9px;color:#1a3a26}
+</style>
+</head>
+<body>
+
+<!-- ─── SETUP OVERLAY ──────────────────────────────────────────────────── -->
+<div id="setup-overlay" style="display:none">
+  <div class="setup-box">
+    <div class="setup-title">⚙️ Configuration Firebase</div>
+    <div class="setup-sub">Suivez ces étapes une seule fois pour activer la synchronisation en temps réel pour toute la tribu.</div>
+
+    <div class="setup-step">
+      <span class="step-num">1</span>
+      <span class="step-text">Allez sur <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Créez un projet (ex: <code>laww-tracker</code>)</span>
+    </div>
+    <div class="setup-step">
+      <span class="step-num">2</span>
+      <span class="step-text">Dans le projet → <code>Firestore Database</code> → <strong>Créer une base de données</strong> → Mode production → Choisissez une région</span>
+    </div>
+    <div class="setup-step">
+      <span class="step-num">3</span>
+      <span class="step-text">Onglet <code>Règles</code> → Remplacez le contenu par :<div class="rules-box">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</div>→ Publiez</span>
+    </div>
+    <div class="setup-step">
+      <span class="step-num">4</span>
+      <span class="step-text">⚙️ Paramètres du projet → <code>Ajouter une application Web</code> (<code>&lt;/&gt;</code>) → Copiez le bloc <code>firebaseConfig</code></span>
+    </div>
+    <div class="setup-step">
+      <span class="step-num">5</span>
+      <span class="step-text">Ouvrez ce fichier HTML avec un éditeur texte → Cherchez <code>FIREBASE_CONFIG</code> en haut → Remplacez les valeurs → Sauvegardez et re-uploadez sur GitHub</span>
+    </div>
+
+    <button class="setup-btn" onclick="document.getElementById('setup-overlay').style.display='none'">
+      J'ai déjà configuré Firebase → Continuer
+    </button>
+  </div>
+</div>
+
+<!-- ─── STATUS BAR ────────────────────────────────────────────────────── -->
+<div id="status-bar">
+  <div class="status-dot connecting" id="status-dot"></div>
+  <span id="status-text" style="color:var(--muted)">Connexion à Firebase...</span>
+  <span id="last-sync" style="color:var(--dim)"></span>
+</div>
+
+<header>
+  <div class="tribe-title">⚔️ LAWW</div>
+  <div class="tribe-sub">Fate War IGG · Suivi Technologique T5 / T6 · Temps réel</div>
+  <div class="chief-badge">👑 Chef : Dju &nbsp;·&nbsp; <span id="total-count">104</span> membres &nbsp;·&nbsp; <span style="color:var(--green)" id="header-status">⟳ sync...</span></div>
+</header>
+
+<div class="container">
+  <div class="stats-grid" id="stats-grid"></div>
+  <div class="bar-group">
+    <div class="bar-card">
+      <div class="bar-label-row"><span style="color:var(--muted);letter-spacing:1px;font-size:11px">PROGRESSION T5 GLOBALE</span><span class="cinzel" style="color:var(--green);font-weight:700" id="bar-t5-pct">0%</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bar-t5-fill" style="background:var(--green);width:0%"></div></div>
+    </div>
+    <div class="bar-card">
+      <div class="bar-label-row"><span style="color:var(--muted);letter-spacing:1px;font-size:11px">PROGRESSION T6 GLOBALE</span><span class="cinzel" style="color:var(--purple);font-weight:700" id="bar-t6-pct">0%</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bar-t6-fill" style="background:var(--purple);width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <input class="search-input" type="text" id="search" placeholder="🔍 Rechercher un membre..." oninput="render()">
+    <button class="view-btn active" id="btn-grid" onclick="setView('grid')">⊞ Grille</button>
+    <button class="view-btn" id="btn-table" onclick="setView('table')">☰ Tableau</button>
+    <span id="sync-badge" class="sync-badge" style="display:none"></span>
+  </div>
+  <div class="sort-filters">
+    <span class="sort-label">TRIER :</span>
+    <button class="tab-btn active-sort" data-sort="rank" onclick="setSort('rank')">Rang</button>
+    <button class="tab-btn" data-sort="t5pct" onclick="setSort('t5pct')">T5 %</button>
+    <button class="tab-btn" data-sort="t6pct" onclick="setSort('t6pct')">T6 %</button>
+    <button class="tab-btn" data-sort="power" onclick="setSort('power')">Puissance</button>
+    <button class="tab-btn" data-sort="name" onclick="setSort('name')">Nom</button>
+    <span class="sort-label" style="margin-left:6px">FILTRER :</span>
+    <button class="tab-btn active-filter" data-filter="all" onclick="setFilter('all')">Tous</button>
+    <button class="tab-btn" data-filter="r4" onclick="setFilter('r4')">R4-R5</button>
+    <button class="tab-btn" data-filter="r3" onclick="setFilter('r3')">R3</button>
+    <button class="tab-btn" data-filter="no_t5" onclick="setFilter('no_t5')">Sans T5</button>
+    <button class="tab-btn" data-filter="has_t5" onclick="setFilter('has_t5')">T5 ✓</button>
+    <button class="tab-btn" data-filter="no_t6" onclick="setFilter('no_t6')">Sans T6</button>
+  </div>
+  <div class="count-label" id="count-label"></div>
+
+  <div id="view-grid" class="grid"></div>
+  <div id="view-table" class="table-wrap" style="display:none">
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Rang</th><th>Nom</th><th>Puissance</th>
+          <th style="min-width:120px">T5 %</th><th style="min-width:120px">T6 %</th>
+          <th>📚 Restant T5</th><th>Unités</th><th>Màj</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">Référence coûts · Or = Connaissances ÷ 10</div>
+    <div class="legend-text">
+      <span>T5 : ❤️HP II 292M/troupe · 💗Troop HP2 292M · 💥ATK2 365M · 🔰DEF2 438M · ⭐unité 40M</span>
+      <span>T6 : ⚔️ATK II 261M · 🛡️DEF II 322.5M · ❤️HP II(11-15) 260M · 🔥Troop III 1168-2336M · 🌟unité 240M · 🏛️éco 986M</span>
+    </div>
+    <div class="legend-foot">Source : PDF calculateurs communautaires · TacticWiki ref T5=3217M / T6=10174M · Synchronisation Firebase en temps réel</div>
+  </div>
+</div>
+
+<!-- ─── MODAL ──────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="modal-avatar" id="m-avatar"></div>
+        <div>
+          <div style="font-size:16px;font-weight:700;letter-spacing:.5px" id="m-name"></div>
+          <div style="font-size:10px;color:var(--dim);letter-spacing:1px;text-transform:uppercase">Fate War · Tribu LAWW</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="modal-prog-t5" id="m-t5-label"></div>
+        <div class="modal-prog-t6" id="m-t6-label"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-costs">
+      <div class="modal-cost-cell">
+        <div class="modal-cost-label">T5 — restant</div>
+        <div class="modal-cost-vals">
+          <span style="color:#3ecf8e" id="m-t5-k">📚 0M</span>
+          <span style="color:#f0b429" id="m-t5-g">🪙 0M</span>
+        </div>
+      </div>
+      <div class="modal-cost-cell">
+        <div class="modal-cost-label">T6 — restant</div>
+        <div class="modal-cost-vals">
+          <span style="color:#b87af0" id="m-t6-k">📚 0M</span>
+          <span style="color:#f0b429" id="m-t6-g">🪙 0M</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active-t5" id="tab-t5" onclick="setTab('t5')">🟢 Chemin T5</button>
+      <button class="modal-tab" id="tab-t6" onclick="setTab('t6')">🟣 Chemin T6</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" id="btn-save" onclick="saveModal()">💾 Sauvegarder & Synchroniser</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── COST DATA ────────────────────────────────────────────────────────────────
+const HP2=[20,22,24,26,28,30,32,34,36,40],THp2=[20,22,24,26,28,30,32,34,36,40];
+const TA2=[25,27.5,30,32.5,35,37.5,40,42.5,45,50],TD2=[30,33,36,39,42,45,48,51,54,60];
+const T5U=40,ATK2=[0,0,0,0,0,18,19.5,21,22.5,24,26.4,28.8,31.2,33.6,36];
+const DEF2=[0,0,0,0,0,22.5,24,25.5,27,28.5,33,36,39,42,45],HP2X=[44,48,52,56,60];
+const THp3=[80,88,96,104,112,120,128,136,144,160];
+const TA3=[160,176,192,208,224,240,256,272,288,320];
+const TD3=[160,176,192,208,224,240,256,272,288,320];
+const T6U=240,TN=[15,16.5,18,19.5,21,30,36,42.5,45,50];
+const GC=[15,18,21,24,27,30,36,42.5,45,50],SA=[20,24,28,32,36,40,44,48,52,60];
+const T5_REF=3217,T6_REF=10174;
+const TROOPS=[
+  {id:'zerk',name:'Berserker',    t5:'Storm Axeman V',       t6:'Storm Axeman VI',       emoji:'⚔️'},
+  {id:'axe', name:'Axethrower',   t5:'Shadowy Axethrower V', t6:'Shadowy Axethrower VI', emoji:'🪓'},
+  {id:'cav', name:'Thunder Cav.', t5:'Thunder Cavalry V',    t6:'Thunder Cavalry VI',    emoji:'🐎'},
+  {id:'beast',name:'Beast Rider', t5:'Beast Rider V',        t6:'Beast Rider VI',        emoji:'🐉'},
+];
+const RANK_CFG={
+  R5:{order:5,bg:'rgba(240,180,41,.18)',border:'rgba(240,180,41,.6)',color:'#ffe066'},
+  R4:{order:4,bg:'rgba(212,175,55,.12)',border:'rgba(212,175,55,.35)',color:'#d4af37'},
+  R3:{order:3,bg:'rgba(168,169,173,.1)',border:'rgba(168,169,173,.3)',color:'#c0c0c8'},
+  R2:{order:2,bg:'rgba(205,127,50,.1)',border:'rgba(205,127,50,.3)',color:'#cd7f32'},
+  R1:{order:1,bg:'rgba(107,153,128,.08)',border:'rgba(107,153,128,.25)',color:'#6b9980'},
+};
+const rem=(arr,cur)=>arr.slice(cur).reduce((s,c)=>s+c,0);
+function calcProg(d){
+  if(!d)return{t5rem:T5_REF,t6rem:T6_REF,t5pct:0,t6pct:0};
+  let t5=0;
+  TROOPS.forEach(t=>t5+=rem(HP2,(d.hpII||{})[t.id]||0));
+  t5+=rem(THp2,d.troopHpII||0)+rem(TA2,d.troopAtkII||0)+rem(TD2,d.troopDefII||0);
+  ['zerk','axe','cav','beast'].forEach(id=>t5+=(1-(d['t5'+id]||0))*T5U);
+  let t6e=0;
+  TROOPS.forEach(t=>{t6e+=rem(ATK2,(d.atkII||{})[t.id]||0)+rem(DEF2,(d.defII||{})[t.id]||0)+rem(HP2X,(d.hpIIx||{})[t.id]||0);});
+  t6e+=rem(THp3,d.troopHpIII||0)+rem(TA3,d.troopAtkIII||0)+rem(TD3,d.troopDefIII||0);
+  ['zerk','axe','cav','beast'].forEach(id=>t6e+=(1-(d['t6'+id]||0))*T6U);
+  t6e+=rem(TN,d.tradeNeg||0)+rem(GC,d.gathererCap||0)+rem(SA,d.shockAbs||0);
+  const t5r=Math.max(0,t5),t6r=Math.max(0,t5+t6e);
+  return{t5rem:t5r,t6rem:t6r,
+    t5pct:Math.max(0,Math.min(100,Math.round((1-t5r/T5_REF)*100))),
+    t6pct:Math.max(0,Math.min(100,Math.round((1-t6r/T6_REF)*100))),
+    t5u:{zerk:d.t5zerk||0,axe:d.t5axe||0,cav:d.t5cav||0,beast:d.t5beast||0},
+    t6u:{zerk:d.t6zerk||0,axe:d.t6axe||0,cav:d.t6cav||0,beast:d.t6beast||0},
+  };
+}
+const mkData=()=>({prereqs:false,hpII:{zerk:0,axe:0,cav:0,beast:0},troopHpII:0,troopAtkII:0,troopDefII:0,
+  t5zerk:0,t5axe:0,t5cav:0,t5beast:0,atkII:{zerk:0,axe:0,cav:0,beast:0},
+  defII:{zerk:0,axe:0,cav:0,beast:0},hpIIx:{zerk:0,axe:0,cav:0,beast:0},
+  troopHpIII:0,troopAtkIII:0,troopDefIII:0,t6zerk:0,t6axe:0,t6cav:0,t6beast:0,
+  tradeNeg:0,gathererCap:0,shockAbs:0});
+const fmt=n=>n>=1000?(n/1000).toFixed(1)+'B':Math.round(n)+'M';
+const fmtP=n=>n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(1)+'M':n>0?n:'—';
+const fmtTime=ts=>{if(!ts)return'';const d=Math.floor((Date.now()-ts)/60000);return d<1?'à l\'instant':d<60?`il y a ${d}min`:d<1440?`il y a ${Math.floor(d/60)}h`:`il y a ${Math.floor(d/1440)}j`;};
+
+// ─── MEMBERS ─────────────────────────────────────────────────────────────────
+const INIT=[
+  {id:'Dju',name:'Dju',rank:'R5',power:101111857},
+  {id:'SilverWind',name:'SilverWind',rank:'R4',power:180133054},
+  {id:'Henoch',name:'Henoch',rank:'R4',power:137904424,isMe:true},
+  {id:'Bunny',name:'♥Bunny♥',rank:'R4',power:69158351},
+  {id:'GDP97Tot',name:'GDP97Tot',rank:'R4',power:180750325},
+  {id:'HolySoma',name:'HolySoma',rank:'R4',power:110484160},
+  {id:'xLexy',name:'xLexy',rank:'R4',power:104403357},
+  {id:'ZINRAGE',name:'ZINRAGE',rank:'R4',power:104342128},
+  {id:'Arselia',name:'Arselia',rank:'R4',power:91245316},
+  {id:'triss',name:'triss',rank:'R4',power:59833970},
+  {id:'Kiab',name:'Kiab',rank:'R3',power:152327441},
+  {id:'LÊXi',name:'LÊXi',rank:'R3',power:127720181},
+  {id:'Vlami',name:'Vlami',rank:'R3',power:120690438},
+  {id:'Buddy911',name:'Buddy911',rank:'R3',power:124851333},
+  {id:'YáshàQ',name:'YáshàQ',rank:'R3',power:111321148},
+  {id:'TabuLaRasa',name:'TabuLaRasa',rank:'R3',power:102710691},
+  {id:'FistoftheNorthStar',name:'FistoftheNorthStar',rank:'R3',power:102677189},
+  {id:'BLADEr',name:'ꔙBLADEꔙ',rank:'R3',power:95879404},
+  {id:'Deviruchi',name:'Deviruchi',rank:'R3',power:92160378},
+  {id:'ACE',name:'†ACE†',rank:'R3',power:91817092},
+  {id:'ITACHIO',name:'⊙ITACHIO⊙',rank:'R3',power:90653037},
+  {id:'Skim',name:'Skim',rank:'R3',power:87268314},
+  {id:'sasaya',name:'sasaya',rank:'R3',power:85112830},
+  {id:'THARKNET',name:'THΩARKNET',rank:'R3',power:81693912},
+  {id:'Reficul',name:'Reficul',rank:'R3',power:80820601},
+  {id:'LeoKrava',name:'LeoKrava',rank:'R3',power:77033143},
+  {id:'Aplusbegalix',name:'♣Aplusbégalix',rank:'R3',power:76934775},
+  {id:'Stlkeith',name:'Stlkeith',rank:'R3',power:76872297},
+  {id:'SssHunter',name:'SssHunter',rank:'R3',power:76822445},
+  {id:'LONER',name:'LONER',rank:'R3',power:75054262},
+  {id:'Foreva',name:'Foreva',rank:'R3',power:74570234},
+  {id:'Van9uard',name:'Van9uard',rank:'R3',power:74083043},
+  {id:'Polnochny',name:'Полночный',rank:'R3',power:72818342},
+  {id:'Lillth',name:'Lillth',rank:'R3',power:72191720},
+  {id:'Bushman',name:'Bushman',rank:'R3',power:70478993},
+  {id:'TakaMari',name:'TakaMari',rank:'R3',power:70073768},
+  {id:'kende07',name:'kende07',rank:'R3',power:69396002},
+  {id:'Luffyboard',name:'Luffyboard',rank:'R3',power:69175146},
+  {id:'khurad',name:'khurad',rank:'R3',power:68427130},
+  {id:'JAY',name:'JÅY',rank:'R3',power:67858525},
+  {id:'Balao',name:'Balao',rank:'R3',power:65813762},
+  {id:'AureusThor',name:'AureusThor',rank:'R3',power:64377639},
+  {id:'vily',name:'vily',rank:'R3',power:63190708},
+  {id:'Marc65',name:'Marc65',rank:'R3',power:62081786},
+  {id:'210Hasan',name:'210Hasan',rank:'R3',power:61839824},
+  {id:'Hongas',name:'• Hongas •',rank:'R3',power:60683186},
+  {id:'laalona',name:'laalona',rank:'R3',power:60581934},
+  {id:'WhiteAlice',name:'WhiteAlice',rank:'R3',power:60041417},
+  {id:'BILDEr',name:'BILDEr',rank:'R3',power:59965886},
+  {id:'Basajaun',name:'Basajaun',rank:'R3',power:59617223},
+  {id:'syria',name:'syria',rank:'R3',power:59470424},
+  {id:'MsBoo',name:'MsBoo',rank:'R3',power:59298415},
+  {id:'ZunOK',name:'ZunOK',rank:'R3',power:58408270},
+  {id:'FELIPEHERNANDEZ',name:'FELIPEHERNANDEZ',rank:'R3',power:58175684},
+  {id:'LORDKRATOS01',name:'LORDKRATOS01',rank:'R3',power:55047117},
+  {id:'izma',name:'_izma_',rank:'R3',power:52087230},
+  {id:'Morena2017',name:'Morena2017',rank:'R3',power:49019529},
+  {id:'Yashar32',name:'Yashar32',rank:'R3',power:46283952},
+  {id:'gandalf',name:'gandalf_el_gris',rank:'R3',power:44010442},
+  {id:'Cheezewiz',name:'Cheezewiz',rank:'R3',power:33887238},
+  {id:'Sandman2121',name:'Sandman2121',rank:'R2',power:75135567},
+  {id:'pobi',name:'푸비',rank:'R2',power:70592758},
+  {id:'sic',name:'sıc',rank:'R2',power:68233146},
+  {id:'Velmoria',name:'Velmoria',rank:'R2',power:65639564},
+  {id:'Alkis16',name:'Alkis16',rank:'R2',power:64535103},
+  {id:'kalim',name:'kalim',rank:'R2',power:64318195},
+  {id:'Kainia',name:'Kainia',rank:'R2',power:64006738},
+  {id:'Szeess',name:'Szeess',rank:'R2',power:59442502},
+  {id:'Navidad',name:'Navidad',rank:'R2',power:57543620},
+  {id:'Jinsei2',name:'Jinseï2',rank:'R2',power:57345121},
+  {id:'Schmax',name:'Schmax',rank:'R2',power:57334168},
+  {id:'GaluKan',name:'✘GaluKan✘',rank:'R2',power:54379402},
+  {id:'gogos',name:'gogos',rank:'R2',power:54233127},
+  {id:'Shadow',name:'ꔙŠĦąĐŐŵꔙ',rank:'R2',power:53526786},
+  {id:'DAMI',name:'村上DAMI村上',rank:'R2',power:53224598},
+  {id:'Domburg',name:'Domburg',rank:'R2',power:53060841},
+  {id:'ManiacusDecimus',name:'ManiacusDecimus',rank:'R2',power:52642924},
+  {id:'XXARCURAXS',name:'XXARÇURAXS',rank:'R2',power:52505741},
+  {id:'Spyxxx',name:'Spyxxx',rank:'R2',power:51907307},
+  {id:'grent',name:'grent',rank:'R2',power:51962349},
+  {id:'Snow_Tiger51',name:'Snow_Tiger51',rank:'R2',power:51409006},
+  {id:'Melyna',name:'Melyna',rank:'R2',power:51304254},
+  {id:'xo_fockmei',name:'xo_fockmei',rank:'R2',power:51211965},
+  {id:'Bouba',name:'Bouba',rank:'R2',power:50981701},
+  {id:'Terran',name:'Терран',rank:'R2',power:49224663},
+  {id:'Xxoo',name:'Xxoo',rank:'R2',power:49161496},
+  {id:'NinjaDad37',name:'NinjaDad37',rank:'R2',power:48976546},
+  {id:'KailynHawke',name:'KailynHawke',rank:'R2',power:48459453},
+  {id:'kertmezkele',name:'kertmezkele',rank:'R2',power:48348871},
+  {id:'crftntxgrrl',name:'crftntxgrrl',rank:'R2',power:47463482},
+  {id:'lrio77up',name:'lrio77up',rank:'R2',power:47068403},
+  {id:'Cerenkov',name:'Cerenkov',rank:'R2',power:46434278},
+  {id:'Hero69',name:'Hero69',rank:'R2',power:46211544},
+  {id:'LIUTD',name:'LIUTD',rank:'R2',power:45307003},
+  {id:'PIRDUHA',name:'PIRDUHA',rank:'R2',power:44243144},
+  {id:'Bulgare27',name:'Bulgare27',rank:'R2',power:42109596},
+  {id:'Kaiira',name:'Kaiira',rank:'R2',power:40885683},
+  {id:'DaGger',name:'DaGger',rank:'R2',power:40607846},
+  {id:'MadAsMe',name:'MadAsMe',rank:'R2',power:39141425},
+  {id:'ellay',name:'ellay',rank:'R2',power:36981358},
+  {id:'pointofnoreturn',name:'pointofnoreturn',rank:'R2',power:34490981},
+  {id:'QueenDiana',name:'QueenDiana',rank:'R2',power:34571372},
+  {id:'lelka',name:'лелька',rank:'R1',power:0},
+  {id:'ghost27',name:'ghost27',rank:'R1',power:0},
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let members = INIT.map(m=>({...m,data:mkData(),updatedAt:null}));
+let db = null;
+let currentSort='rank', currentFilter='all', currentView='grid', currentTab='t5';
+let editingId=null, editData=null;
+
+// ─── FIREBASE INIT ───────────────────────────────────────────────────────────
+function initFirebase(){
+  const isPlaceholder = FIREBASE_CONFIG.apiKey === 'VOTRE_API_KEY';
+  if(isPlaceholder){
+    document.getElementById('setup-overlay').style.display='flex';
+    setStatus('error','⚠️ Firebase non configuré — mode lecture seule');
+    render();
+    return;
+  }
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    setStatus('connecting','Connexion...');
+
+    // Real-time listener — se déclenche à chaque changement dans Firestore
+    db.collection('laww_research').onSnapshot(snapshot=>{
+      const remoteData={};
+      snapshot.forEach(doc=>{ remoteData[doc.id]=doc.data(); });
+
+      members = INIT.map(m=>({
+        ...m,
+        data: remoteData[m.id]?.research || mkData(),
+        updatedAt: remoteData[m.id]?.updatedAt || null,
+      }));
+
+      const now = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      setStatus('connected',`🔴 En direct · ${members.filter(m=>m.updatedAt).length} membres synchronisés`);
+      document.getElementById('last-sync').textContent = `Dernière sync: ${now}`;
+      document.getElementById('header-status').textContent = '🟢 En direct';
+      render();
+    }, err=>{
+      console.error(err);
+      setStatus('error','❌ Erreur Firebase — vérifiez les règles Firestore');
+    });
+  } catch(e){
+    setStatus('error','❌ Config Firebase invalide');
+    document.getElementById('setup-overlay').style.display='flex';
+    render();
+  }
+}
+
+function setStatus(type, text){
+  const dot=document.getElementById('status-dot');
+  const txt=document.getElementById('status-text');
+  dot.className='status-dot '+type;
+  txt.textContent=text;
+  txt.style.color = type==='connected'?'var(--green)':type==='error'?'var(--red)':'var(--muted)';
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function rankBadge(rank){
+  const c=RANK_CFG[rank]||RANK_CFG.R1;
+  return `<span class="rank-badge" style="background:${c.bg};border:1px solid ${c.border};color:${c.color}">${rank}</span>`;
+}
+function pips(t5u,t6u){
+  return `<div class="pips">
+    <span class="pips-label">T5</span>${TROOPS.map(t=>`<div class="pip${t5u[t.id]?' on-green':''}"></div>`).join('')}
+    <span class="pips-label" style="margin-left:4px">T6</span>${TROOPS.map(t=>`<div class="pip${t6u[t.id]?' on-purple':''}"></div>`).join('')}
+  </div>`;
+}
+function miniRing(pct,color,label){
+  const r=19,circ=2*Math.PI*r,off=circ-(pct/100)*circ;
+  return `<div class="ring-wrap">
+    <svg width="52" height="52" viewBox="0 0 44 44" style="transform:rotate(-90deg)">
+      <circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="4"/>
+      <circle cx="22" cy="22" r="${r}" fill="none" stroke="${color}" stroke-width="4"
+        stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}"
+        style="filter:drop-shadow(0 0 3px ${color}80)"/>
+    </svg>
+    <div class="ring-label">${label} ${pct}%</div>
+  </div>`;
+}
+
+function getProcessed(){
+  const q=document.getElementById('search').value.toLowerCase();
+  return members.map(m=>({...m,prog:calcProg(m.data)}))
+    .filter(m=>{
+      if(q&&!m.name.toLowerCase().includes(q))return false;
+      if(currentFilter==='no_t5')return m.prog.t5pct<100;
+      if(currentFilter==='has_t5')return m.prog.t5pct>=100;
+      if(currentFilter==='no_t6')return m.prog.t6pct<100;
+      if(currentFilter==='r4')return m.rank==='R4'||m.rank==='R5';
+      if(currentFilter==='r3')return m.rank==='R3';
+      return true;
+    })
+    .sort((a,b)=>{
+      if(currentSort==='rank')return(RANK_CFG[b.rank]?.order||0)-(RANK_CFG[a.rank]?.order||0)||b.power-a.power;
+      if(currentSort==='t5pct')return b.prog.t5pct-a.prog.t5pct;
+      if(currentSort==='t6pct')return b.prog.t6pct-a.prog.t6pct;
+      if(currentSort==='power')return b.power-a.power;
+      if(currentSort==='name')return a.name.localeCompare(b.name);
+      return 0;
+    });
+}
+
+function render(){
+  const all=members.map(m=>calcProg(m.data));
+  const avgT5=Math.round(all.reduce((s,p)=>s+p.t5pct,0)/all.length);
+  const avgT6=Math.round(all.reduce((s,p)=>s+p.t6pct,0)/all.length);
+  const t5done=all.filter(p=>p.t5pct>=100).length;
+  const t6done=all.filter(p=>p.t6pct>=100).length;
+  const totalK=all.reduce((s,p)=>s+p.t5rem,0);
+
+  document.getElementById('stats-grid').innerHTML=[
+    {icon:'👥',label:'Membres',value:members.length,color:'#d4e8dc'},
+    {icon:'🟢',label:'Moy. T5',value:`${avgT5}%`,color:'#3ecf8e'},
+    {icon:'✅',label:'T5 Complets',value:`${t5done}/${members.length}`,color:'#3ecf8e'},
+    {icon:'🟣',label:'Moy. T6',value:`${avgT6}%`,color:'#b87af0'},
+    {icon:'🌟',label:'T6 Complets',value:`${t6done}/${members.length}`,color:'#b87af0'},
+    {icon:'📚',label:'Connais. T5',value:`${fmt(totalK)}M`,color:'#f0b429'},
+  ].map(s=>`<div class="stat-card"><div class="stat-label">${s.icon} ${s.label}</div>
+    <div class="stat-value cinzel" style="color:${s.color}">${s.value}</div></div>`).join('');
+
+  document.getElementById('bar-t5-pct').textContent=avgT5+'%';
+  document.getElementById('bar-t5-fill').style.width=avgT5+'%';
+  document.getElementById('bar-t6-pct').textContent=avgT6+'%';
+  document.getElementById('bar-t6-fill').style.width=avgT6+'%';
+
+  const list=getProcessed();
+  document.getElementById('count-label').textContent=`${list.length} membre${list.length!==1?'s':''} affichés sur ${members.length}`;
+
+  document.getElementById('view-grid').innerHTML=list.map(m=>{
+    const p=m.prog;
+    const topbar=p.t6pct>=100?'linear-gradient(90deg,transparent,var(--purple),transparent)':
+      p.t5pct>=100?'linear-gradient(90deg,transparent,var(--green),transparent)':
+      m.isMe?'linear-gradient(90deg,transparent,var(--gold),transparent)':'transparent';
+    const upd=m.updatedAt?`<div class="updated-tag">⏱ ${fmtTime(m.updatedAt)}</div>`:'';
+    return `<div class="member-card${m.isMe?' is-me':''}" onclick="openModal('${m.id}')">
+      <div class="card-topbar" style="background:${topbar}"></div>
+      <div class="card-head">
+        <div>
+          <div class="card-name${m.isMe?' cinzel':''}" style="${m.isMe?'color:var(--gold)':''}">${m.name}${m.isMe?'<span style="font-size:9px;color:var(--gold);margin-left:4px">◀ MOI</span>':''}</div>
+          <div class="card-meta">${rankBadge(m.rank)}${m.power>0?`<span class="card-power">${fmtP(m.power)}</span>`:''}</div>
+          ${upd}
+        </div>
+        <div class="card-rings">${miniRing(p.t5pct,'#3ecf8e','T5')}${miniRing(p.t6pct,'#b87af0','T6')}</div>
+      </div>
+      <div class="card-bars">
+        <div class="bar-track" style="height:4px"><div class="bar-fill" style="background:var(--green);width:${p.t5pct}%"></div></div>
+        <div style="height:3px"></div>
+        <div class="bar-track" style="height:4px"><div class="bar-fill" style="background:var(--purple);width:${p.t6pct}%"></div></div>
+      </div>
+      <div class="card-rem">📚 ${fmt(p.t5rem)} restants T5</div>
+      ${pips(p.t5u,p.t6u)}
+    </div>`;
+  }).join('');
+
+  document.getElementById('tbody').innerHTML=list.map((m,i)=>{
+    const p=m.prog;
+    const b5=`<div class="td-bar"><div class="bar-track" style="flex:1;height:5px"><div class="bar-fill" style="background:var(--green);width:${p.t5pct}%"></div></div><span class="td-pct" style="color:${p.t5pct>=100?'var(--green)':'var(--text)'}">${p.t5pct}%</span></div>`;
+    const b6=`<div class="td-bar"><div class="bar-track" style="flex:1;height:5px"><div class="bar-fill" style="background:var(--purple);width:${p.t6pct}%"></div></div><span class="td-pct" style="color:${p.t6pct>=100?'var(--purple)':'var(--text)'}">${p.t6pct}%</span></div>`;
+    return `<tr onclick="openModal('${m.id}')">
+      <td style="color:var(--muted);font-weight:700;font-size:12px">${i+1}</td>
+      <td>${rankBadge(m.rank)}</td>
+      <td style="font-weight:600;${m.isMe?'color:var(--gold)':''}">${m.name}${m.isMe?' ◀':''}</td>
+      <td style="color:var(--green);font-size:11px">${fmtP(m.power)}</td>
+      <td>${b5}</td><td>${b6}</td>
+      <td class="td-rem">📚 ${fmt(p.t5rem)}</td>
+      <td>${pips(p.t5u,p.t6u)}</td>
+      <td class="td-up">${m.updatedAt?fmtTime(m.updatedAt):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openModal(id){
+  const m=members.find(x=>x.id===id);if(!m)return;
+  editingId=id;editData=JSON.parse(JSON.stringify(m.data||mkData()));
+  const cfg=RANK_CFG[m.rank]||RANK_CFG.R1;
+  const av=document.getElementById('m-avatar');
+  av.style.cssText=`background:${cfg.bg};border:1px solid ${cfg.border};color:${cfg.color}`;
+  av.textContent=m.rank;
+  document.getElementById('m-name').textContent=m.name;
+  document.getElementById('m-name').style.color=m.isMe?'var(--gold)':'var(--text)';
+  currentTab='t5';
+  updateModalProg();renderModalBody();
+  document.getElementById('modal').style.display='flex';
+}
+function closeModal(){document.getElementById('modal').style.display='none';editingId=null;editData=null;}
+
+async function saveModal(){
+  if(!editingId)return;
+  const btn=document.getElementById('btn-save');
+  btn.disabled=true;btn.textContent='⏳ Envoi...';
+
+  if(db){
+    try {
+      await db.collection('laww_research').doc(editingId).set({
+        research: editData,
+        updatedAt: Date.now(),
+        memberName: members.find(m=>m.id===editingId)?.name || editingId,
+      });
+      btn.textContent='✓ Synchronisé !';
+      showSyncBadge('saved');
+    } catch(e){
+      btn.textContent='❌ Erreur réseau';
+      console.error(e);
+    }
+  } else {
+    // Fallback si Firebase non configuré
+    members=members.map(m=>m.id===editingId?{...m,data:editData,updatedAt:Date.now()}:m);
+    render();
+    btn.textContent='✓ Sauvegardé';
+  }
+  setTimeout(()=>{btn.disabled=false;btn.textContent='💾 Sauvegarder & Synchroniser';closeModal();},800);
+}
+
+function showSyncBadge(type){
+  const b=document.getElementById('sync-badge');
+  b.style.display='inline';
+  if(type==='saving'){b.className='sync-badge sync-saving';b.textContent='⏳ Synchronisation...';}
+  else{b.className='sync-badge sync-saved';b.textContent='✓ Synchronisé';setTimeout(()=>b.style.display='none',2000);}
+}
+
+function setTab(t){
+  currentTab=t;
+  document.getElementById('tab-t5').className='modal-tab'+(t==='t5'?' active-t5':'');
+  document.getElementById('tab-t6').className='modal-tab'+(t==='t6'?' active-t6':'');
+  renderModalBody();
+}
+function updateModalProg(){
+  const p=calcProg(editData);
+  document.getElementById('m-t5-label').textContent=`T5: ${p.t5pct}% · ${fmt(p.t5rem)} restant`;
+  document.getElementById('m-t6-label').textContent=`T6: ${p.t6pct}% · ${fmt(p.t6rem)} restant`;
+  document.getElementById('m-t5-k').textContent=`📚 ${fmt(p.t5rem)}M`;
+  document.getElementById('m-t5-g').textContent=`🪙 ${fmt(p.t5rem/10)}M`;
+  document.getElementById('m-t6-k').textContent=`📚 ${fmt(p.t6rem)}M`;
+  document.getElementById('m-t6-g').textContent=`🪙 ${fmt(p.t6rem/10)}M`;
+}
+
+function lvlRow(label,val,max,path,accent,note){
+  const pct=Math.round((val/max)*100),done=val>=max;
+  return `<div class="form-row">
+    <span class="form-label">${label}${note?`<span class="form-note">${note}</span>`:''}</span>
+    <div class="form-controls">
+      <div class="form-mini-bar"><div class="form-mini-fill" style="background:${done?'var(--green)':accent};width:${pct}%"></div></div>
+      <button class="f-btn" onclick="adj('${path}',-1,${max})">−</button>
+      <span class="f-val${done?' done':''}">${val}/${max}</span>
+      <button class="f-btn" onclick="adj('${path}',1,${max})">+</button>
+      ${val<max?`<button class="f-max" onclick="maxF('${path}',${max})">MAX</button>`:''}
+    </div>
+  </div>`;
+}
+function togRow(label,val,path){
+  return `<div class="toggle-row">
+    <span class="toggle-label">${label}</span>
+    <div style="display:flex;gap:4px">
+      <button class="tog${val?'':' off'}" onclick="setTog('${path}',0)">✗ Verr.</button>
+      <button class="tog${val?' on':''}" onclick="setTog('${path}',1)">✓ Déverr.</button>
+    </div>
+  </div>`;
+}
+function sec(title,note,content){
+  return `<div class="section"><div class="section-title">${title}${note?` <span style="color:var(--dim);font-weight:400">· ${note}</span>`:''}</div>${content}</div>`;
+}
+
+function renderModalBody(){
+  const d=editData;let html='';
+  if(currentTab==='t5'){
+    const pre=d.prereqs;
+    html+=sec('Prérequis (sans coût)','',
+      `<div class="prereq-box${pre?' checked':''}" onclick="togglePre()">
+        <div class="prereq-check${pre?' checked':''}">${pre?'<span style="font-size:9px;color:#07130f;font-weight:900">✓</span>':''}</div>
+        <span style="font-size:11px;color:${pre?'var(--green)':'var(--dim)'}">MOV SPD · ATK I · Unité II → III → IV · DEF I · HP I (tous complétés)</span>
+      </div>`);
+    html+=sec('❤️ HP II par troupe · niv 1-10','20→40M/niv · 292M/troupe',
+      TROOPS.map(t=>lvlRow(`${t.emoji} ${t.name} HP II`,(d.hpII||{})[t.id]||0,10,`hpII.${t.id}`,'#f0b429','')).join(''));
+    html+=sec('Stats générales Troupes II · niv 1-10','',
+      lvlRow('💗 Troop HP II',d.troopHpII||0,10,'troopHpII','#f0b429','20→40M')+
+      lvlRow('💥 Troop ATK II',d.troopAtkII||0,10,'troopAtkII','#f0b429','25→50M')+
+      lvlRow('🔰 Troop DEF II',d.troopDefII||0,10,'troopDefII','#f0b429','30→60M'));
+    html+=sec('⭐ Déverrouillage T5 · 40M par unité','',
+      TROOPS.map(t=>togRow(`${t.emoji} ${t.t5}`,d['t5'+t.id]||0,'t5'+t.id)).join(''));
+  } else {
+    html+=`<div class="modal-note">S'ajoute au T5. Niv. 1-5 de ATK/DEF II = gratuits.</div>`;
+    html+=sec('⚔️ ATK II par troupe · niv 1-15 (1-5 gratuits)','18→36M (niv6-15) · 261M/troupe',
+      TROOPS.map(t=>lvlRow(`${t.emoji} ${t.name} ATK II`,(d.atkII||{})[t.id]||0,15,`atkII.${t.id}`,'#b87af0','')).join(''));
+    html+=sec('🛡️ DEF II par troupe · niv 1-15 (1-5 gratuits)','22.5→45M (niv6-15) · 322.5M/troupe',
+      TROOPS.map(t=>lvlRow(`${t.emoji} ${t.name} DEF II`,(d.defII||{})[t.id]||0,15,`defII.${t.id}`,'#b87af0','')).join(''));
+    html+=sec('❤️ HP II niveaux 11-15','44→60M/niv · 260M/troupe',
+      TROOPS.map(t=>lvlRow(`${t.emoji} ${t.name} HP II (11-15)`,(d.hpIIx||{})[t.id]||0,5,`hpIIx.${t.id}`,'#b87af0','')).join(''));
+    html+=sec('🔥 Stats générales Troupes III · niv 1-10','',
+      lvlRow('💗 Troop HP III',d.troopHpIII||0,10,'troopHpIII','#b87af0','80→160M')+
+      lvlRow('💥 Troop ATK III',d.troopAtkIII||0,10,'troopAtkIII','#b87af0','160→320M')+
+      lvlRow('🔰 Troop DEF III',d.troopDefIII||0,10,'troopDefIII','#b87af0','160→320M'));
+    html+=sec('🌟 Déverrouillage T6 · 240M par unité','',
+      TROOPS.map(t=>togRow(`${t.emoji} ${t.t6}`,d['t6'+t.id]||0,'t6'+t.id)).join(''));
+    html+=sec('🏛️ Nœuds économiques · niv 1-10','',
+      lvlRow('🤝 Trade Negotiations',d.tradeNeg||0,10,'tradeNeg','#f0b429','15→50M')+
+      lvlRow('📦 Gatherer Capacity',d.gathererCap||0,10,'gathererCap','#f0b429','15→50M')+
+      lvlRow('⚡ Shock Absorption',d.shockAbs||0,10,'shockAbs','#f0b429','20→60M'));
+  }
+  document.getElementById('modal-body').innerHTML=html;
+}
+
+function getF(path){const p=path.split('.');let o=editData;for(let i=0;i<p.length-1;i++){if(!o[p[i]])o[p[i]]={};o=o[p[i]];}return{o,k:p[p.length-1]};}
+function adj(path,d,max){const{o,k}=getF(path);o[k]=Math.max(0,Math.min(max,(o[k]||0)+d));updateModalProg();renderModalBody();}
+function maxF(path,max){const{o,k}=getF(path);o[k]=max;updateModalProg();renderModalBody();}
+function setTog(path,v){const{o,k}=getF(path);o[k]=v;updateModalProg();renderModalBody();}
+function togglePre(){editData.prereqs=!editData.prereqs;updateModalProg();renderModalBody();}
+
+function setSort(s){currentSort=s;document.querySelectorAll('[data-sort]').forEach(b=>b.classList.remove('active-sort'));document.querySelector(`[data-sort="${s}"]`).classList.add('active-sort');render();}
+function setFilter(f){currentFilter=f;document.querySelectorAll('[data-filter]').forEach(b=>b.classList.remove('active-filter'));document.querySelector(`[data-filter="${f}"]`).classList.add('active-filter');render();}
+function setView(v){currentView=v;document.getElementById('view-grid').style.display=v==='grid'?'grid':'none';document.getElementById('view-table').style.display=v==='table'?'block':'none';document.getElementById('btn-grid').className='view-btn'+(v==='grid'?' active':'');document.getElementById('btn-table').className='view-btn'+(v==='table'?' active':'');}
+
+render();
+initFirebase();
+</script>
+</body>
+</html>
